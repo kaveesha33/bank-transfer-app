@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Large Transfers</title>
+</head>
+<body>
+
+<h1>Transfers Above Minimum Amount</h1>
+
+<p>
+    Minimum amount:
+    <span th:text="${min}"></span>
+</p>
+
+<table border="1">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>From Account</th>
+        <th>To Account</th>
+        <th>Amount</th>
+        <th>Status</th>
+        <th>Description</th>
+        <th>Date</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    <tr th:each="tx : ${transactions}">
+        <td th:text="${tx.id}"></td>
+        <td th:text="${tx.fromAccount}"></td>
+        <td th:text="${tx.toAccount}"></td>
+        <td th:text="${tx.amount}"></td>
+        <td th:text="${tx.status}"></td>
+        <td th:text="${tx.description}"></td>
+        <td th:text="${tx.createdAt}"></td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>
