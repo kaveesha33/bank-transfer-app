@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -106,67 +107,159 @@ public class BankService {
     // THE MOST IMPORTANT METHOD
     // Transfer money between two accounts
 
-    @Transactional(rollbackFor = Exception.class)
-    public BankTransaction transfer(TransferRequest request) throws Exception {
+@Transactional(rollbackFor = Exception.class)
+public BankTransaction transfer(TransferRequest request) throws Exception {
 
-        String fromAccount = request.getFromAccount();
-        String toAccount = request.getToAccount();
+    String fromAccount = request.getFromAccount();
+    String toAccount = request.getToAccount();
 
-        BigDecimal amount = request.getAmount();
+    BigDecimal amount = request.getAmount();
 
-        // 1. Validate that sender and receiver are different
-        if (fromAccount.equals(toAccount)) {
+    // 1. Validate accounts are different
+    if (fromAccount.equals(toAccount)) {
+        throw new BankException(
+                "Sender and receiver accounts must be different"
+        );
+    }
 
+    // 2. Check that all three accounts exist
+    getCustomer(fromAccount);
+    getCustomer(toAccount);
+    getCustomer("999999");
+
+    // 3. Calculate the 1% fee
+    BigDecimal fee = amount
+            .multiply(new BigDecimal("0.01"))
+            .setScale(2, RoundingMode.HALF_UP);
+
+    // 4. Calculate the total amount deducted from the sender
+    BigDecimal totalDebit = amount.add(fee);
+
+    // 5. Debit sender (transfer amount + fee)
+    int debitResult = customerRepository.debit(
+            fromAccount,
+            totalDebit
+    );
+
+    if (debitResult != 1) {
+        throw new InsufficientBalanceException(
+                "Insufficient balance including transfer fee"
+        );
+    }
+
+    // 6. Credit receiver (original transfer amount only)
+    int receiverResult = customerRepository.credit(
+            toAccount,
+            amount
+    );
+
+    if (receiverResult != 1) {
+        throw new BankException(
+                "Could not credit receiver account"
+        );
+    }
+
+    // 7. Credit the bank fee account
+    if (fee.compareTo(BigDecimal.ZERO) > 0) {
+
+        int bankResult = customerRepository.credit(
+                "999999",
+                fee
+        );
+
+        if (bankResult != 1) {
             throw new BankException(
-                    "Sender and receiver must be different accounts.");
+                    "Could not credit bank fee account"
+            );
+        }
+    }
+
+    // 8. Simulate failure AFTER all three updates
+    if (request.isSimulateFailure()) {
+        throw new BankException(
+                "Simulated system failure. All changes were rolled back."
+        );
+    }
+
+    // 9. Save successful transaction record
+    BankTransaction transaction = new BankTransaction();
+
+    transaction.setFromAccount(fromAccount);
+    transaction.setToAccount(toAccount);
+    transaction.setAmount(amount);
+    transaction.setStatus(TransactionStatus.SUCCESS);
+    transaction.setDescription(
+            "TRANSFER - 1% fee: " + fee.toPlainString()
+    );
+
+    return transactionRepository.save(transaction);
+}
+
+    public List<BankTransaction> getLargeTransfers(BigDecimal minAmount) {
+        return transactionRepository.findTransfersAboveAmount(minAmount);
+    }
+
+    public BigDecimal getTotalSuccessfulSent(String accountNumber) {
+        return transactionRepository.getTotalSuccessfulSent(
+                accountNumber,
+                TransactionStatus.SUCCESS);
+    }
+
+    @Transactional
+    public BankTransaction deposit(String accountNumber, BigDecimal amount) {
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BankException("Deposit amount must be greater than zero");
         }
 
-        // 2. Check that both accounts exist
-        customerRepository
-                .getByAccountNumber(fromAccount)
-                .orElseThrow(() -> new AccountNotFoundException(fromAccount));
+        // Check whether the account exists
+        getCustomer(accountNumber);
 
-        customerRepository
-                .getByAccountNumber(toAccount)
-                .orElseThrow(() -> new AccountNotFoundException(toAccount));
+        // Add money to the customer's balance
+        int updatedRows = customerRepository.credit(accountNumber, amount);
 
-        // 3. Debit the sender
-        int debitResult = customerRepository.debit(
-                fromAccount, amount);
-
-        if (debitResult == 0) {
-
-            throw new InsufficientBalanceException(fromAccount);
+        if (updatedRows != 1) {
+            throw new BankException("Could not deposit money into the account");
         }
 
-        // 4. Simulate a system failure
-        if (request.isSimulateFailure()) {
-
-            throw new BankException(
-                    "All changes were rolled back due to a simulated failure.");
-        }
-
-        // 5. Credit the receiver
-        int creditResult = customerRepository.credit(
-                toAccount, amount);
-
-        if (creditResult == 0) {
-
-            throw new AccountNotFoundException(toAccount);
-        }
-
-        // 6. Save successful transaction
+        // Create a transaction record
         BankTransaction transaction = new BankTransaction();
 
-        transaction.setFromAccount(fromAccount);
-        transaction.setToAccount(toAccount);
+        transaction.setFromAccount("EXTERNAL");
+        transaction.setToAccount(accountNumber);
         transaction.setAmount(amount);
-
         transaction.setStatus(TransactionStatus.SUCCESS);
-
-        transaction.setDescription("Transfer completed successfully.");
+        transaction.setDescription("DEPOSIT");
 
         return transactionRepository.save(transaction);
     }
 
+    @Transactional
+    public BankTransaction withdraw(String accountNumber, BigDecimal amount) {
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BankException("Withdrawal amount must be greater than zero");
+        }
+
+        // Check whether the account exists
+        getCustomer(accountNumber);
+
+        // Subtract money only if sufficient balance exists
+        int updatedRows = customerRepository.debit(accountNumber, amount);
+
+        if (updatedRows != 1) {
+            throw new InsufficientBalanceException("Insufficient balance");
+        }
+
+        // Create a transaction record
+        BankTransaction transaction = new BankTransaction();
+
+        transaction.setFromAccount(accountNumber);
+        transaction.setToAccount("EXTERNAL");
+        transaction.setAmount(amount);
+        transaction.setStatus(TransactionStatus.SUCCESS);
+        transaction.setDescription("WITHDRAWAL");
+
+        return transactionRepository.save(transaction);
+    }
 }

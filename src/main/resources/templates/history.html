@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"
-      xmlns:th="http://www.thymeleaf.org">
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
 
 <head>
 
@@ -8,96 +7,99 @@
 
     <title>Account History</title>
 
-    <link rel="stylesheet"
-          th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
 
 </head>
 
 <body>
 
-<header>
-    <h1>Account Transaction History</h1>
-</header>
+    <header>
+        <h1>Account Transaction History</h1>
+    </header>
 
-<main>
+    <main>
 
-    <section>
+        <section>
 
-        <h2>Customer Details</h2>
+            <h2>Customer Details</h2>
 
-        <p>
-            Account Number:
-            <strong th:text="${customer.accountNumber}"></strong>
-        </p>
+            <p>
+                Account Number:
+                <strong th:text="${customer.accountNumber}"></strong>
+            </p>
 
-        <p>
-            Customer Name:
-            <strong th:text="${customer.fullName}"></strong>
-        </p>
+            <p>
+                Customer Name:
+                <strong th:text="${customer.fullName}"></strong>
+            </p>
 
-        <p>
-            Email:
-            <strong th:text="${customer.email}"></strong>
-        </p>
+            <p>
+                Email:
+                <strong th:text="${customer.email}"></strong>
+            </p>
 
-        <p>
-            Current Balance:
-            <strong th:text="${customer.balance}"></strong>
-        </p>
+            <p>
+                Current Balance:
+                <strong th:text="${customer.balance}"></strong>
+            </p>
+            <h3>
+                Total Successful Amount Sent:
+                Rs. <span th:text="${totalSent}"></span>
+            </h3>
 
-    </section>
-
-
-    <section>
-
-        <h2>Transaction History</h2>
-
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Transaction ID</th>
-                    <th>From</th>
-                    <th>To</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Description</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                <tr th:each="t : ${transactions}">
-
-                    <td th:text="${t.id}"></td>
-
-                    <td th:text="${t.fromAccount}"></td>
-
-                    <td th:text="${t.toAccount}"></td>
-
-                    <td th:text="${t.amount}"></td>
-
-                    <td th:text="${t.status}"></td>
-
-                    <td th:text="${t.createdAt}"></td>
-
-                    <td th:text="${t.description}"></td>
-
-                </tr>
-
-            </tbody>
-
-        </table>
-
-    </section>
+        </section>
 
 
-    <a th:href="@{/}">Back to Dashboard</a>
+        <section>
 
-</main>
+            <h2>Transaction History</h2>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Transaction ID</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Description</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr th:each="t : ${transactions}">
+
+                        <td th:text="${t.id}"></td>
+
+                        <td th:text="${t.fromAccount}"></td>
+
+                        <td th:text="${t.toAccount}"></td>
+
+                        <td th:text="${t.amount}"></td>
+
+                        <td th:text="${t.status}"></td>
+
+                        <td th:text="${t.createdAt}"></td>
+
+                        <td th:text="${t.description}"></td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+
+        <a th:href="@{/}">Back to Dashboard</a>
+
+    </main>
 
 </body>
 
